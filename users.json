@@ -1,1 +1,17 @@
-[{"name":"Mark","login":"adminMark","password":"MarksPass","id":842},{"name":"Ben","login":"BenDavtyan","password":"BensPass","id":553}]
+[
+  {
+    "name": "Mark",
+    "login": "adminMark",
+    "password": "MarksPass"
+  },
+  {
+    "name": "Ben",
+    "login": "BenDavtyan",
+    "password": "BensPass"
+  },
+  {
+    "username": "f",
+    "email": "f",
+    "password": "f"
+  }
+]

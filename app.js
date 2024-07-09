@@ -7,63 +7,36 @@ const bodyParser = require('body-parser')
 const fs = require('fs')
 const path = require('path')
 const jwt = require('jsonwebtoken')
+const { tokenValidation } = require('./config/tokenValidation');
+const authRouter = require('./routers/auth');
+const fileUpload = require('express-fileupload');
 app.set('view engine', 'ejs')
 app.set('views', path.join(__dirname, 'views'))
 app.use(express.static(path.join(__dirname, 'public')))
+app.use(express.static(path.join(__dirname, 'config')));
 
 app.use(express.json())
 app.use(bodyParser.urlencoded({ extended: true }));
 
-const auth = (req, res, next) => {
-    const auth = req.headers['authorization']
-    if (auth) {
-        const token = auth.split(" ")[1]
-        jwt.verify(token, SECRET_KEY, (err, user) => {
-            if (err) {
-                return res.status(400).send("invalid token")
-            }
-            req.user = user
-            return next()
-        })
-    }
-    res.render('login')
-
-}
 
 
 app.get('/register', (req, res) => {
     res.render('register')
 })
-app.post('/register', (req, res) => {
-    const { name, login, password } = req.body
-    let usersFs = fs.readFileSync('users.json')
-    let users = JSON.parse(usersFs)
-    const id = Math.floor(Math.random() * 1000)
-    let newUser = { name, login, password, id }
-
-    users.push(newUser)
-    fs.writeFileSync('users.json', JSON.stringify(users))
-    res.status(201).send("You have successfully registered");
-});
-
 app.get('/users', (req, res) => {
     let usersFs = fs.readFileSync('users.json')
     let users = JSON.parse(usersFs)
     res.render('users', { users })
 })
 
-app.get('/login', (req, res) => {
-    res.render('login')
-})
-app.post('/login', (req, res) => {
-    const { login, password } = req.body
-    let usersFs = fs.readFileSync('users.json')
-    let users = JSON.parse(usersFs)
-    let found = users.find(user => user.login === login && user.password === password)
 
-    if (found) {
-        const user = found;
-        const token = jwt.sign(user, SECRET_KEY, { expiresIn: 60 });
+app.post('/login', (req, res) => {
+    const { email, password } = req.body
+    let users = JSON.parse(fs.readFileSync('users.json'))
+    let foundUser = users.find(user => user.email === email && user.password === password)
+
+    if (foundUser) {
+        const token = jwt.sign(foundUser, SECRET_KEY, { expiresIn: 60 });
         return res.status(200).send(token);
     } else {
         return res.status(401).send('Invalid credentials');
@@ -71,11 +44,31 @@ app.post('/login', (req, res) => {
 }
 )
 
-app.get('/user', auth, (req, res) => {
+app.get('/user', tokenValidation, (req, res) => {
     res.status(200).send("Welcome to your personal account dear " + req.user.name)
 })
 
+app.use('/', authRouter)
+app.use(
+  fileUpload({
+    limits: { fileSize: 50 * 1024 * 1024 },
+  })
+);
+app.post('/uploads', (req, res) => {
+    const { file, fileName } = req.body;
+  
+    const newFile = Buffer.from(file, 'base64');
+  
+    const filePath = path.join(__dirname, 'uploads', Date.now() + fileName);
+    fs.writeFile(filePath, newFile, (err) => {
+      if (err) {
+        return res.status(500).json({ message: err });
+      }
+      res.json({ message: 'File uploaded successfully' });
+    });
+  });
+
 app.listen(PORT, () => {
-    console.log(`Server is running on port http://localhost: ${PORT}`);
+    console.log(`Server is running on port http://localhost:${PORT}`);
 })
 
